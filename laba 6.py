@@ -66,7 +66,7 @@ if want_table == "1":
     # Заголовок таблицы
     header = ["№ острова"] + [str(i) for i in range(1, T + 1)]
 
-    # Определяем максимальную длину строки для красивого разделения
+    # Определяем максимальную длину строки для разделения
     max_length = max(len(word) for word in header)
     separator = "+" + "+".join(["-" * max_length for _ in header]) + "+"
 
@@ -173,7 +173,7 @@ if want_table == "1":
     # Заголовок таблицы
     header = ["№ острова"] + [str(i) for i in range(1, T + 1)]
 
-    # Определяем максимальную длину строки для красивого разделения
+    # Определяем максимальную длину строки для  разделения
     max_length = max(len(word) for word in header)
     separator = "+" + "+".join(["-" * max_length for _ in header]) + "+"
 
