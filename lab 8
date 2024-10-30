@@ -1,0 +1,220 @@
+#Требуется написать объектно-ориентированную программу с графическим интерфейсом в соответствии со своим вариантом. 
+#В программе должны быть реализованы минимум один класс, три атрибута, четыре метода (функции). 
+#Ввод данных из файла с контролем правильности ввода. 
+#Базы данных использовать нельзя. При необходимости сохранять информацию в виде файлов, разделяя значения запятыми или пробелами. 
+#Для GUI использовать библиотеку tkinter.
+#Вариант 19
+#Объекты – договоры на аренду концертного зала
+#Функции:	сегментация полного списка договоров по заказчикам
+#визуализация предыдущей функции в форме круговой диаграммы
+#сегментация полного списка договоров по месяцам текущего года
+#визуализация предыдущей функции в форме круговой диаграммы
+
+
+import tkinter as tk  
+from tkinter import messagebox, simpledialog, ttk  
+import csv  
+import matplotlib.pyplot as plt  
+
+# Класс для хранения информации о договорах
+class Contract:
+    def __init__(self, zak, date, summ):
+        self.zak = zak  # Заказчик
+        self.date = date  # Дата в формате 'YYYY-MM-DD'
+        self.summ = float(summ)  # Сумма договора
+
+# Класс для управления договорами
+class Contract1:  
+    def __init__(self):
+        self.contracts = []  # Список договоров
+
+    # Метод для загрузки данных из CSV-файла
+    def loadfile(self, pfile):  
+        errors = []  # Список для хранения ошибок
+        gs = 0  # Счетчик правильных строк
+        try:
+            # Открываем CSV-файл для чтения
+            with open(pfile, newline='', encoding='utf-8') as file:  
+                reader = csv.reader(file)  
+                for line_number, row in enumerate(reader, start=1):  
+                    if len(row) != 3:  
+                        errors.append(f"{line_number}")  
+                        continue
+                    
+                    zak, date, summ = row  # Извлекаем данные из строки
+                    
+                    # Проверка формата даты
+                    try:
+                        year, month, day = map(int, date.split('-'))  
+                        if not (1 <= month <= 12 and 1 <= day <= 31):  
+                            raise ValueError("Неверный формат даты.")
+                    except Exception:
+                        errors.append(f"{line_number}")  
+                        continue
+                    
+                    # Проверка формата суммы
+                    try:
+                        summ = float(summ)  
+                    except ValueError:
+                        errors.append(f"{line_number}")  
+                        continue
+                    
+                    contract = Contract(zak, date, summ)  # Создание объекта договора
+                    self.contracts.append(contract)  
+                    gs += 1  
+            
+            # Если нет ни одной правильной строки, показываем сообщение об ошибке
+            if gs == 0:
+                messagebox.showerror("Ошибка", "Нет ни одной правильной строки в файле.")
+                
+            # Если были ошибки, выводим сообщение
+            if errors and gs != 0:
+                messagebox.showwarning("Ошибки", f"Неверный формат строк: {', '.join(errors)}.\nПравильный формат строки: <Заказчик>, <Дата (YYYY-MM-DD)>, <Сумма>.")
+            
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при загрузке файла: {e}")
+
+    # Метод для сегментации по заказчикам
+    def segmentzak(self):  
+        res = {}  
+        for contract in self.contracts:
+            if contract.zak in res:
+                res[contract.zak] += contract.summ  
+            else:
+                res[contract.zak] = contract.summ  
+        return res
+
+    # Метод для сегментации по месяцам 
+    def segmentmes(self):  
+        res = {}  
+        for contract in self.contracts:
+            year, month, _ = contract.date.split('-')  
+            if month in res:
+                res[month] += contract.summ  
+            else:
+                res[month] = contract.summ  
+        return res
+
+# Класс для создания графического интерфейса
+class App:
+    def __init__(self, root):
+        self.manager = Contract1()  
+
+        # Загрузка данных сразу после старта 
+        pfile = 'contracts_example.csv'  # Имя файла с данными
+        self.manager.loadfile(pfile)  # Загрузка данных из файла
+        
+        # Настройка интерфейса
+        self.setup_ui()
+
+        self.filtered_contracts = self.manager.contracts  # Переменная для хранения отфильтрованных данных
+
+    # Метод для настройки интерфейса
+    def setup_ui(self):
+        root.configure(bg="#f0f8ff")  
+        self.frame = tk.Frame(root, bg="#f0f8ff")  
+        self.frame.pack(pady=10, fill=tk.BOTH, expand=True)  
+
+        # Таблица для отображения данных
+        self.table_frame = tk.Frame(self.frame, bg="#f0f8ff")  
+        self.table_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)  
+
+        # Создание виджета таблицы
+        self.table = ttk.Treeview(self.table_frame, columns=("Заказчик", "Дата", "Сумма"), show='headings', height=15)
+        self.table.heading("Заказчик", text="Заказчик", command=self.reset_filter)  
+        self.table.heading("Дата", text="Дата", command=self.filter_date)  
+        self.table.heading("Сумма", text="Сумма")  
+        self.table.pack(fill=tk.BOTH, expand=True)  
+
+        # Заполнение таблицы данными
+        self.zaptable(self.manager.contracts)  
+
+        # Обработчик двойного щелчка 
+        self.table.bind('<Double-1>', self.double_click)  
+
+        # Кнопка для отображения диаграмм
+        self.chart_button = tk.Button(self.frame, text="Показать диаграммы", command=self.chart, bg="#90caf9", fg="black")
+        self.chart_button.pack(side=tk.TOP, pady=10)  
+
+        # Кнопка для сброса фильтрации
+        self.reset_button = tk.Button(self.frame, text="Сбросить фильтрацию", command=self.reset_filter, bg="#90caf9", fg="black")
+        self.reset_button.pack(side=tk.BOTTOM, anchor='se', padx=10, pady=10)  
+        self.reset_button.pack_forget() 
+
+    # Метод для заполнения таблицы данными
+    def zaptable(self, contracts):
+        for row in self.table.get_children():
+            self.table.delete(row)  
+        
+        # Заполнение таблицы новыми данными
+        for contract in contracts:
+            self.table.insert("", tk.END, values=(contract.zak, contract.date, contract.summ))  
+
+    # Обработчик события двойного щелчка
+    def double_click(self, event):
+        selected_item = self.table.selection()  
+        if selected_item:  
+            item = self.table.item(selected_item)  
+            zak_name = item['values'][0]  
+            # Фильтруем контракты по выбранному заказчику
+            self.filtered_contracts = [contract for contract in self.manager.contracts if contract.zak == zak_name]
+            self.zaptable(self.filtered_contracts)  
+            self.reset_button.pack()  
+
+    # Метод для сброса фильтрации
+    def reset_filter(self):
+        self.filtered_contracts = self.manager.contracts  
+        self.zaptable(self.filtered_contracts)  
+        self.reset_button.pack_forget()  
+
+    # Метод для фильтрации по дате
+    def filter_date(self):
+        year = simpledialog.askstring("Год", "Введите год (YYYY):")  
+        month = simpledialog.askstring("Месяц", "Введите месяц (MM):")  
+
+        # Проверяем корректность ввода
+        if year and month:
+            try:
+                if not (year.isdigit() and len(year) == 4) or not (month.isdigit() and len(month) == 2):
+                    raise ValueError("Неверный формат года или месяца.")
+                filtered_contracts = [contract for contract in self.filtered_contracts
+                                      if contract.date.startswith(year + '-') and contract.date[5:7] == month]
+                if not filtered_contracts:  
+                    messagebox.showinfo("Информация", "Нет заказов, удовлетворяющих фильтрации.")
+                else:
+                    self.zaptable(filtered_contracts)  
+                    self.reset_button.pack()  
+            except Exception as e:
+                messagebox.showerror("Ошибка", f"Неверные данные: {e}")  
+
+    # Метод для отображения круговых диаграмм
+    def chart(self):
+        customers_data = self.manager.segmentzak()  
+        if customers_data: 
+            self.chart1(customers_data, "Сегментация по заказчикам") 
+
+        # Сегментация и построение диаграммы по месяцам
+        months_data = self.manager.segmentmes()  
+        if months_data:  
+            self.chart1(months_data, "Сегментация по месяцам")  
+
+    # Метод для отображения круговой диаграммы в отдельном окне
+    def chart1(self, data, title):
+        labels = list(data.keys())  
+        sizes = list(data.values()) 
+
+        # Создание круговой диаграммы
+        plt.figure()  
+        plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)  
+        plt.axis('equal')  
+        plt.title(title) 
+
+        # Отображение диаграммы
+        plt.show()  
+
+# Запуск приложения
+if __name__ == "__main__":  
+    root = tk.Tk()  
+    root.title("Управление договорами")  
+    app = App(root)  
+    root.mainloop()  
